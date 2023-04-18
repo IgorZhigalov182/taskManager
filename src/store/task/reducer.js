@@ -1,5 +1,4 @@
-import { taskUpdated } from './actionTypes';
-import { taskDeleted } from './actionTypes';
+import { taskUpdated, taskDeleted } from './actionTypes';
 
 export function taskReducer(state = [], action) {
   switch (action.type) {
