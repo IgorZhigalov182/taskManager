@@ -1,41 +1,61 @@
 import { createAction, createSlice } from '@reduxjs/toolkit';
 import todosService from '../services/todos.service';
-
-const initialState = [];
+import { setError } from './errors';
+const initialState = { entities: [], isLoading: true };
 
 const taskSlice = createSlice({
   name: 'task',
   initialState,
   reducers: {
     recived(state, action) {
-      return action.payload;
+      //   console.log(state.entities);
+      //   console.log(action.payload);
+
+      state.entities = action.payload;
+      state.isLoading = false;
     },
     update(state, action) {
-      const elementIndex = state.findIndex((el) => el.id === action.payload.id);
-      state[elementIndex] = {
-        ...state[elementIndex],
+      const elementIndex = state.entities.findIndex((el) => el.id === action.payload.id);
+      state.entities[elementIndex] = {
+        ...state.entities[elementIndex],
         ...action.payload,
       };
     },
     remove(state, action) {
-      return state.filter((el) => el.id !== action.payload.id);
+      state.entities = state.entities.filter((el) => el.id !== action.payload.id);
+    },
+    taskRequested(state) {
+      state.isLoading = true;
+    },
+    taskRequestFailed(state, action) {
+      state.isLoading = false;
+    },
+    add(ourState, newTask) {
+      ourState.entities.unshift(newTask.payload);
     },
   },
 });
-
 const { actions, reducer: taskReducer } = taskSlice;
-const { update, remove, recived } = actions;
-const taskRequested = createAction('task/requested');
-const taskRequestedFailed = createAction('task/requestedFailed');
+const { update, remove, recived, taskRequested, taskRequestFailed, add } = actions;
 
-export const getTask = () => async (dispatch) => {
+export const loadTasks = () => async (dispatch) => {
   dispatch(taskRequested());
   try {
     const data = await todosService.fetch();
     dispatch(recived(data));
-    console.log(data);
   } catch (error) {
-    dispatch(taskRequestedFailed(error.message));
+    dispatch(taskRequestFailed());
+    dispatch(setError(error.message));
+  }
+};
+
+export const createTask = (state) => async (dispatch) => {
+  try {
+    const newTask = await todosService.getOneTask();
+    const task = newTask.body;
+    dispatch(add(task));
+  } catch (error) {
+    dispatch(setError(error.message));
   }
 };
 
@@ -46,9 +66,11 @@ export const completeTask = (id) => (dispatch, getState) => {
 export function titleChanged(id) {
   return update({ id, title: `New title for ${id}` });
 }
-
-export function taskDelete(id) {
+export function taskDeleted(id) {
   return remove({ id });
 }
+
+export const getTasks = () => (state) => state.tasks.entities;
+export const getTasksLoadingStatus = () => (state) => state.tasks.isLoading;
 
 export default taskReducer;
